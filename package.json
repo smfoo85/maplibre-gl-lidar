@@ -38,6 +38,7 @@
     "*.css"
   ],
   "scripts": {
+    "prepare": "npm run build",
     "dev": "vite",
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:examples": "vite build --config vite.examples.config.ts",
