@@ -1992,6 +1992,41 @@ export class LidarControl implements IControl {
   }
 
   /**
+   * Sets the visibility of a point cloud layer.
+   *
+   * @param id - ID of the point cloud
+   * @param visible - Whether the layer should be visible
+   */
+  setPointCloudVisibility(id: string, visible: boolean): void {
+    this._pointCloudManager?.setPointCloudVisibility(id, visible);
+    this._emit('stylechange');
+    this._emit('statechange');
+  }
+
+  /**
+   * Loads multiple point clouds concurrently.
+   *
+   * @param items - Array of {url, name} objects to load
+   * @param options - Optional loading options
+   * @returns Array of PointCloudInfo for loaded clouds
+   */
+  async loadPointClouds(
+    items: Array<{ url: string; name: string }>,
+    options?: { loadingMode?: import('./types').CopcLoadingMode }
+  ): Promise<PointCloudInfo[]> {
+    return Promise.all(
+      items.map(({ url, name }) =>
+        this.loadPointCloud(url, options).then((info) => {
+          // Override auto-derived name with the caller-supplied clean name
+          const pc = this._state.pointClouds.find((p) => p.id === info.id);
+          if (pc) pc.name = name;
+          return { ...info, name };
+        })
+      )
+    );
+  }
+
+  /**
    * Flies the map to a point cloud's bounds.
    *
    * @param id - ID of the point cloud (or undefined for active/first)
@@ -2254,6 +2289,7 @@ export class LidarControl implements IControl {
         onZOffsetChange: (offset) => this.setZOffset(offset),
         onUnload: (id) => this.unloadPointCloud(id),
         onZoomTo: (id) => this.flyToPointCloud(id),
+        onVisibilityToggle: (id, visible) => this.setPointCloudVisibility(id, visible),
         onClassificationToggle: (code, visible) => this._toggleClassification(code, visible),
         onClassificationShowAll: () => this._showAllClassifications(),
         onClassificationHideAll: () => this._hideAllClassifications(),

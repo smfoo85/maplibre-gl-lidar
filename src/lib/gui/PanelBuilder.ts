@@ -34,6 +34,7 @@ export interface PanelBuilderCallbacks {
   onTerrainChange: (enabled: boolean) => void;
   onUnload: (id: string) => void;
   onZoomTo: (id: string) => void;
+  onVisibilityToggle?: (id: string, visible: boolean) => void;
   onClassificationToggle: (classificationCode: number, visible: boolean) => void;
   onClassificationShowAll: () => void;
   onClassificationHideAll: () => void;
@@ -79,6 +80,7 @@ export class PanelBuilder {
   private _classificationLegend?: ClassificationLegend;
   private _classificationLegendContainer?: HTMLElement;
   private _shareFeedbackTimeout?: ReturnType<typeof setTimeout>;
+  private _hiddenClouds: Map<string, boolean> = new Map();
 
   constructor(
     callbacks: PanelBuilderCallbacks,
@@ -1033,6 +1035,24 @@ export class PanelBuilder {
     zoomBtn.textContent = 'Zoom';
     zoomBtn.title = 'Zoom to point cloud';
     zoomBtn.addEventListener('click', () => this._callbacks.onZoomTo(pc.id));
+
+    if (this._callbacks.onVisibilityToggle) {
+      const eyeBtn = document.createElement('button');
+      eyeBtn.type = 'button';
+      eyeBtn.className = 'lidar-pointcloud-action';
+      const isHidden = this._hiddenClouds.get(pc.id) ?? false;
+      eyeBtn.textContent = isHidden ? '🙈' : '👁';
+      eyeBtn.title = isHidden ? 'Show layer' : 'Hide layer';
+      eyeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const nowHidden = !(this._hiddenClouds.get(pc.id) ?? false);
+        this._hiddenClouds.set(pc.id, nowHidden);
+        eyeBtn.textContent = nowHidden ? '🙈' : '👁';
+        eyeBtn.title = nowHidden ? 'Show layer' : 'Hide layer';
+        this._callbacks.onVisibilityToggle!(pc.id, !nowHidden);
+      });
+      actions.insertBefore(eyeBtn, zoomBtn);
+    }
 
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';

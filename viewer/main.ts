@@ -342,11 +342,6 @@ async function loadFromUrl(url: string): Promise<void> {
     const m    = await ensureMapReady();
     const ctrl = await attachControls(m);
 
-    // Remove existing clouds
-    for (const cloud of ctrl.getPointClouds()) {
-      ctrl.unloadPointCloud(cloud.id);
-    }
-
     const info = await ctrl.loadPointCloud(trimmed);
 
     ctrl.flyToPointCloud(info.id);
@@ -390,10 +385,6 @@ async function loadFromFile(file: File): Promise<void> {
   try {
     const m    = await ensureMapReady();
     const ctrl = await attachControls(m);
-
-    for (const cloud of ctrl.getPointClouds()) {
-      ctrl.unloadPointCloud(cloud.id);
-    }
 
     const info = await ctrl.loadPointCloud(file);
 
