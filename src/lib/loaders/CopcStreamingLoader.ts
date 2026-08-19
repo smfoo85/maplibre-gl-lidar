@@ -3,9 +3,6 @@ import type { Copc as CopcType } from 'copc';
 import { createLazPerf, type LazPerf } from 'laz-perf';
 import proj4 from 'proj4';
 
-// Register common projected coordinate systems that might not have WKT in files
-// EPSG:2180 - ETRS89 / Poland CS92 (commonly used in Poland)
-proj4.defs('EPSG:2180', '+proj=tmerc +lat_0=0 +lon_0=19 +k=0.9993 +x_0=500000 +y_0=-5300000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs');
 import type {
   NodeKey,
   CachedNode,

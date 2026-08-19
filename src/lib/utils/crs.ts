@@ -1,5 +1,27 @@
 import proj4 from 'proj4';
 
+// ---------------------------------------------------------------------------
+// Statically-bundled definitions for CRS codes that may be absent or
+// unreliable on epsg.io. These are registered once at module load time so
+// they are available synchronously — no network request needed.
+// ---------------------------------------------------------------------------
+
+// EPSG:29874 — GDM2000 / East Malaysia BRSO (Borneo RSO)
+// Commonly used for LiDAR surveys in Sabah & Sarawak, Malaysia.
+proj4.defs(
+  'EPSG:29874',
+  '+proj=omerc +no_uoff +lat_0=4 +lonc=115 +alpha=53.3158204722222' +
+  ' +gamma=53.1301023611111 +k=0.99984 +x_0=2000000 +y_0=5000000' +
+  ' +ellps=evrstSS +towgs84=-679,669,-48,0,0,0,0 +units=m +no_defs +type=crs',
+);
+
+// EPSG:2180 — ETRS89 / Poland CS92
+proj4.defs(
+  'EPSG:2180',
+  '+proj=tmerc +lat_0=0 +lon_0=19 +k=0.9993 +x_0=500000 +y_0=-5300000' +
+  ' +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs',
+);
+
 // Cache for fetched proj4 definitions to avoid duplicate network requests
 const _defCache = new Map<string, string>();
 
