@@ -1051,7 +1051,7 @@ export class PanelBuilder {
         eyeBtn.title = nowHidden ? 'Show layer' : 'Hide layer';
         this._callbacks.onVisibilityToggle!(pc.id, !nowHidden);
       });
-      actions.insertBefore(eyeBtn, zoomBtn);
+      actions.appendChild(eyeBtn);
     }
 
     const removeBtn = document.createElement('button');
