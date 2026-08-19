@@ -4,6 +4,7 @@ import { createLazPerf, type LazPerf } from 'laz-perf';
 import { load } from '@loaders.gl/core';
 import { LASLoader } from '@loaders.gl/las';
 import proj4 from 'proj4';
+import { resolveCrs } from '../utils/crs';
 import type { PointCloudData, ExtraPointAttributes, AttributeArray } from './types';
 import type { PointCloudBounds } from '../core/types';
 
@@ -174,19 +175,23 @@ export class PointCloudLoader {
   }
 
   private _onProgress?: (progress: number, message: string) => void;
+  private _fallbackCrs?: string;
 
   /**
    * Loads a point cloud from a URL, File, or ArrayBuffer.
    *
    * @param source - URL string, File object, or ArrayBuffer
    * @param onProgress - Optional progress callback (progress: 0-100, message: string)
+   * @param fallbackCrs - CRS to use when the file has no embedded projection (e.g. "EPSG:29874")
    * @returns Normalized point cloud data
    */
   async load(
     source: string | File | ArrayBuffer,
-    onProgress?: (progress: number, message: string) => void
+    onProgress?: (progress: number, message: string) => void,
+    fallbackCrs?: string
   ): Promise<PointCloudData> {
     this._onProgress = onProgress;
+    this._fallbackCrs = fallbackCrs;
 
     if (typeof source === 'string') {
       // URL - check if it's HTTP(S) for remote loading
@@ -396,6 +401,16 @@ export class PointCloudLoader {
       }
     }
 
+    // No embedded CRS — apply fallbackCrs when provided
+    if (!needsTransform && this._fallbackCrs) {
+      console.info(`[LAS] No embedded CRS found — applying fallbackCrs: ${this._fallbackCrs}`);
+      const resolved = await resolveCrs(this._fallbackCrs);
+      if (resolved) {
+        transformer = resolved;
+        needsTransform = true;
+      }
+    }
+
     // Create view for reading point data
     const pointFormat = header.pointDataRecordFormat & 0x7F; // Mask off compression bit
 
@@ -583,6 +598,16 @@ export class PointCloudLoader {
         verticalUnitFactor = getVerticalUnitConversionFactor(wkt);
       } catch (e) {
         console.warn('Failed to setup coordinate transformation:', e);
+      }
+    }
+
+    // No embedded CRS — apply fallbackCrs when provided
+    if (!needsTransform && this._fallbackCrs) {
+      console.info(`[LAS/loaders.gl] No embedded CRS found — applying fallbackCrs: ${this._fallbackCrs}`);
+      const resolved = await resolveCrs(this._fallbackCrs);
+      if (resolved) {
+        transformer = resolved;
+        needsTransform = true;
       }
     }
 
@@ -813,6 +838,16 @@ export class PointCloudLoader {
         verticalUnitFactor = getVerticalUnitConversionFactor(copc.wkt);
       } catch (e) {
         console.warn('Failed to setup coordinate transformation:', e);
+      }
+    }
+
+    // No embedded CRS — apply fallbackCrs when provided
+    if (!needsTransform && this._fallbackCrs) {
+      console.info(`[COPC] No embedded CRS found — applying fallbackCrs: ${this._fallbackCrs}`);
+      const resolved = await resolveCrs(this._fallbackCrs);
+      if (resolved) {
+        transformer = resolved;
+        needsTransform = true;
       }
     }
 

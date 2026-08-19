@@ -15,6 +15,7 @@ import type {
   StreamingLoaderEvent,
   StreamingLoaderEventHandler,
 } from './streaming-types';
+import { resolveCrs } from '../utils/crs';
 import type { PointCloudData, ExtraPointAttributes, AttributeArray } from './types';
 import type { PointCloudBounds } from '../core/types';
 
@@ -215,16 +216,19 @@ function clampLatLng(lng: number, lat: number, context: string = ''): [number, n
   return [clampedLng, clampedLat];
 }
 
+type ResolvedOptions = Required<Omit<StreamingLoaderOptions, 'fallbackCrs'>> & Pick<StreamingLoaderOptions, 'fallbackCrs'>;
+
 /**
  * Default options for streaming loader
  */
-const DEFAULT_OPTIONS: Required<StreamingLoaderOptions> = {
+const DEFAULT_OPTIONS: ResolvedOptions = {
   pointBudget: 5_000_000,
   maxConcurrentRequests: 8,
   viewportDebounceMs: 100,
   minDetailZoom: 10,
   maxOctreeDepth: 20,
   maxSubtreesPerViewport: 60, // Not used by COPC, but required by interface
+  fallbackCrs: undefined,
 };
 
 /**
@@ -237,7 +241,7 @@ export class CopcStreamingLoader {
   private _source: string | Getter | null = null; // URL string or Getter for buffer
   private _copc: CopcType | null = null;
   private _lazPerf: LazPerf | null = null;
-  private _options: Required<StreamingLoaderOptions>;
+  private _options: ResolvedOptions;
 
   // Hierarchy cache - loaded on-demand per page
   private _hierarchyPages: Map<string, Hierarchy.Subtree> = new Map();
@@ -366,31 +370,41 @@ export class CopcStreamingLoader {
       } catch (e) {
         console.warn('Failed to setup coordinate transformation:', e);
       }
-    } else {
-      // No WKT - try to detect coordinate system based on coordinate ranges
-      const minX = header.min[0];
-      const minY = header.min[1];
-      const maxX = header.max[0];
-      const maxY = header.max[1];
+    }
 
-      // Detect if coordinates are likely in a projected system
-      let detectedEPSG: string | null = null;
-
-      // Polish coordinate systems (EPSG:2176-2180)
-      // EPSG:2180 (Poland CS92): X: ~170,000-860,000, Y: ~140,000-780,000
-      if (minX >= 100000 && maxX <= 900000 && minY >= 100000 && maxY <= 800000) {
-        detectedEPSG = 'EPSG:2180';
-      }
-
-      // Try to setup transformation with detected EPSG
-      if (detectedEPSG) {
-        try {
-          const projConverter = proj4(detectedEPSG, 'EPSG:4326');
-          this._transformer = (coord: [number, number]) =>
-            projConverter.forward(coord) as [number, number];
+    // No WKT (or WKT failed) — try fallbackCrs option, then heuristic detection
+    if (!this._needsTransform) {
+      if (this._options.fallbackCrs) {
+        console.info(`[COPC] No embedded CRS found — applying fallbackCrs: ${this._options.fallbackCrs}`);
+        const transformer = await resolveCrs(this._options.fallbackCrs);
+        if (transformer) {
+          this._transformer = transformer;
           this._needsTransform = true;
-        } catch (e) {
-          console.warn(`Failed to setup coordinate transformation from ${detectedEPSG}:`, e);
+        }
+      } else {
+        // Heuristic detection for known projected coordinate ranges
+        const minX = header.min[0];
+        const minY = header.min[1];
+        const maxX = header.max[0];
+        const maxY = header.max[1];
+
+        let detectedEPSG: string | null = null;
+
+        // Polish coordinate systems (EPSG:2176-2180)
+        // EPSG:2180 (Poland CS92): X: ~170,000-860,000, Y: ~140,000-780,000
+        if (minX >= 100000 && maxX <= 900000 && minY >= 100000 && maxY <= 800000) {
+          detectedEPSG = 'EPSG:2180';
+        }
+
+        if (detectedEPSG) {
+          try {
+            const projConverter = proj4(detectedEPSG, 'EPSG:4326');
+            this._transformer = (coord: [number, number]) =>
+              projConverter.forward(coord) as [number, number];
+            this._needsTransform = true;
+          } catch (e) {
+            console.warn(`Failed to setup coordinate transformation from ${detectedEPSG}:`, e);
+          }
         }
       }
     }

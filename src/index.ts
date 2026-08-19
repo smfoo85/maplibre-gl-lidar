@@ -80,6 +80,8 @@ export type {
 } from './lib/layers/types';
 
 // Utility exports
+export { resolveCrs } from './lib/utils/crs';
+
 export {
   clamp,
   formatNumericValue,

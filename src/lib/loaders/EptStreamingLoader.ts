@@ -9,6 +9,7 @@ import type {
   StreamingLoaderEvent,
   StreamingLoaderEventHandler,
 } from './streaming-types';
+import { resolveCrs } from '../utils/crs';
 import type {
   EptMetadata,
   EptDimension,
@@ -174,16 +175,19 @@ function getVerticalUnitConversionFactor(wkt: string): number {
   return 1.0;
 }
 
+type ResolvedOptions = Required<Omit<StreamingLoaderOptions, 'fallbackCrs'>> & Pick<StreamingLoaderOptions, 'fallbackCrs'>;
+
 /**
  * Default options for streaming loader
  */
-const DEFAULT_OPTIONS: Required<StreamingLoaderOptions> = {
+const DEFAULT_OPTIONS: ResolvedOptions = {
   pointBudget: 5_000_000,
   maxConcurrentRequests: 8,
   viewportDebounceMs: 100,
   minDetailZoom: 10,
   maxOctreeDepth: 20,
   maxSubtreesPerViewport: 60,
+  fallbackCrs: undefined,
 };
 
 /**
@@ -197,7 +201,7 @@ const DEFAULT_OPTIONS: Required<StreamingLoaderOptions> = {
  */
 export class EptStreamingLoader {
   private _baseUrl: string;
-  private _options: Required<StreamingLoaderOptions>;
+  private _options: ResolvedOptions;
   private _metadata: EptMetadata | null = null;
 
   // Hierarchy cache
@@ -316,6 +320,16 @@ export class EptStreamingLoader {
         this._verticalUnitFactor = getVerticalUnitConversionFactor(this._metadata.srs.wkt);
       } catch (e) {
         console.warn('Failed to setup EPT coordinate transformation:', e);
+      }
+    }
+
+    // No WKT (or WKT failed) — apply fallbackCrs when provided
+    if (!this._needsTransform && this._options.fallbackCrs) {
+      console.info(`[EPT] No embedded CRS found — applying fallbackCrs: ${this._options.fallbackCrs}`);
+      const transformer = await resolveCrs(this._options.fallbackCrs);
+      if (transformer) {
+        this._transformer = transformer;
+        this._needsTransform = true;
       }
     }
 

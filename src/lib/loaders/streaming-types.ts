@@ -51,6 +51,13 @@ export interface StreamingLoaderOptions {
    * @default 60
    */
   maxSubtreesPerViewport?: number;
+
+  /**
+   * Fallback CRS to use when the file contains no embedded projection (WKT).
+   * Accepts EPSG codes ("EPSG:29874"), proj4 strings ("+proj=omerc …"), or WKT.
+   * When set, it is applied only if no WKT can be read from the file.
+   */
+  fallbackCrs?: string;
 }
 
 /**

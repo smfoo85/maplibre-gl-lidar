@@ -301,6 +301,19 @@ export interface LidarControlOptions {
    * @default true
    */
   closeOnOutsideClick?: boolean;
+
+  /**
+   * Fallback coordinate reference system used when a loaded file contains no
+   * embedded projection information (WKT VLR). Accepts an EPSG code string
+   * such as `"EPSG:29874"`, a proj4 definition string, or a WKT string.
+   * When omitted or `undefined`, files without a CRS are treated as already
+   * in WGS84 (the previous behaviour).
+   *
+   * @example
+   * // Use Malaysian/Borneo BRSO projection as the default CRS
+   * fallbackCrs: 'EPSG:29874'
+   */
+  fallbackCrs?: string;
 }
 
 /**

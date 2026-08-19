@@ -1,3 +1,5 @@
+export { resolveCrs } from './crs';
+
 export {
   clamp,
   formatNumericValue,

@@ -38,7 +38,8 @@ import { getAvailableClassifications } from '../colorizers/ColorScheme';
 /**
  * Default options for the LidarControl
  */
-const DEFAULT_OPTIONS: Required<Omit<LidarControlOptions, 'pickInfoFields' | 'copcLoadingMode'>> & Pick<LidarControlOptions, 'pickInfoFields' | 'copcLoadingMode'> = {
+const DEFAULT_OPTIONS: Required<Omit<LidarControlOptions, 'pickInfoFields' | 'copcLoadingMode' | 'fallbackCrs'>> &
+  Pick<LidarControlOptions, 'pickInfoFields' | 'copcLoadingMode' | 'fallbackCrs'> = {
   collapsed: true,
   position: 'top-right',
   title: 'LiDAR Viewer',
@@ -72,6 +73,7 @@ const DEFAULT_OPTIONS: Required<Omit<LidarControlOptions, 'pickInfoFields' | 'co
   sampleData: [],
   sampleDataLabel: 'Load sample data...',
   closeOnOutsideClick: true,
+  fallbackCrs: undefined,
 };
 
 /**
@@ -101,7 +103,8 @@ export class LidarControl implements IControl {
   private _mapContainer?: HTMLElement;
   private _container?: HTMLElement;
   private _panel?: HTMLElement;
-  private _options: Required<Omit<LidarControlOptions, 'pickInfoFields' | 'copcLoadingMode'>> & Pick<LidarControlOptions, 'pickInfoFields' | 'copcLoadingMode'>;
+  private _options: Required<Omit<LidarControlOptions, 'pickInfoFields' | 'copcLoadingMode' | 'fallbackCrs'>> &
+    Pick<LidarControlOptions, 'pickInfoFields' | 'copcLoadingMode' | 'fallbackCrs'>;
   private _state: LidarState;
   private _eventHandlers: EventHandlersMap = new globalThis.Map();
 
@@ -532,7 +535,7 @@ export class LidarControl implements IControl {
 
     // Route EPT URLs to EPT streaming loader
     if (isEptUrl) {
-      return this.loadPointCloudEptStreaming(source as string);
+      return this.loadPointCloudEptStreaming(source as string, { fallbackCrs: this._options.fallbackCrs });
     }
 
     // Check if this is a COPC file
@@ -558,7 +561,7 @@ export class LidarControl implements IControl {
 
     // Use streaming mode for COPC sources with dynamic mode
     if (mode === 'dynamic' && isCopc) {
-      return this.loadPointCloudStreaming(source);
+      return this.loadPointCloudStreaming(source, { fallbackCrs: this._options.fallbackCrs });
     }
 
     const id = generateId('pc');
@@ -584,7 +587,7 @@ export class LidarControl implements IControl {
 
     try {
       // Load the point cloud with progress reporting
-      const data = await this._loader.load(source, onProgress);
+      const data = await this._loader.load(source, onProgress, this._options.fallbackCrs);
 
       // Report final progress
       onProgress(95, 'Creating visualization layers...');
@@ -788,6 +791,7 @@ export class LidarControl implements IControl {
           options?.viewportDebounceMs ?? this._options.streamingViewportDebounceMs,
         minDetailZoom: options?.minDetailZoom ?? 10,
         maxOctreeDepth: options?.maxOctreeDepth ?? 20,
+        fallbackCrs: options?.fallbackCrs ?? this._options.fallbackCrs,
       });
 
       // Initialize - reads header and root hierarchy
@@ -1031,6 +1035,7 @@ export class LidarControl implements IControl {
           options?.viewportDebounceMs ?? this._options.streamingViewportDebounceMs,
         minDetailZoom: options?.minDetailZoom ?? 10,
         maxOctreeDepth: options?.maxOctreeDepth ?? 20,
+        fallbackCrs: options?.fallbackCrs ?? this._options.fallbackCrs,
       });
 
       // Initialize - reads ept.json metadata
@@ -1398,7 +1403,7 @@ export class LidarControl implements IControl {
         this._panelBuilder?.updateLoadingProgress(mappedProgress, message);
       };
 
-      const data = await this._loader.load(buffer.buffer, onProgress);
+      const data = await this._loader.load(buffer.buffer, onProgress, this._options.fallbackCrs);
 
       this._panelBuilder?.updateLoadingProgress(95, 'Creating visualization layers...');
 
