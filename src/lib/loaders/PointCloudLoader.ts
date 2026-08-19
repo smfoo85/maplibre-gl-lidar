@@ -376,8 +376,10 @@ export class PointCloudLoader {
 
     // Try to get WKT from VLRs
     const getter = createBufferGetter(buffer);
+    let allVlrs: { userId: string; recordId: number }[] = [];
     try {
       const vlrs = await Las.Vlr.walk(getter, header);
+      allVlrs = vlrs.map(v => ({ userId: v.userId, recordId: v.recordId }));
       for (const vlr of vlrs) {
         if (vlr.userId === 'LASF_Projection' && vlr.recordId === 2112) {
           const vlrData = await Las.Vlr.fetch(getter, vlr);
@@ -389,6 +391,17 @@ export class PointCloudLoader {
       console.warn('Failed to read VLRs:', e);
     }
 
+    // ── CRS diagnostic ──────────────────────────────────────────────────────
+    console.group('[LAS] CRS detection');
+    console.log('LAS version   :', `${header.majorVersion}.${header.minorVersion}`);
+    console.log('Point format  :', header.pointDataRecordFormat);
+    console.log('Raw bounds X  :', header.min[0].toFixed(3), '→', header.max[0].toFixed(3));
+    console.log('Raw bounds Y  :', header.min[1].toFixed(3), '→', header.max[1].toFixed(3));
+    console.log('Raw bounds Z  :', header.min[2].toFixed(3), '→', header.max[2].toFixed(3));
+    console.log('VLRs found    :', allVlrs.length, allVlrs);
+    console.log('WKT (VLR 2112):', wkt ? wkt.slice(0, 120) + (wkt.length > 120 ? '…' : '') : '⚠ NOT FOUND — file has no embedded projection');
+    // ────────────────────────────────────────────────────────────────────────
+
     if (wkt) {
       try {
         const wktToUse = extractProjcsFromWkt(wkt);
@@ -396,6 +409,8 @@ export class PointCloudLoader {
         transformer = (coord: [number, number]) => projConverter.forward(coord) as [number, number];
         needsTransform = true;
         verticalUnitFactor = getVerticalUnitConversionFactor(wkt);
+        console.log('CRS source    : embedded WKT');
+        console.log('Vertical unit :', verticalUnitFactor === 1.0 ? 'metres' : `feet → metres (×${verticalUnitFactor})`);
       } catch (e) {
         console.warn('Failed to setup coordinate transformation:', e);
       }
@@ -403,13 +418,18 @@ export class PointCloudLoader {
 
     // No embedded CRS — apply fallbackCrs when provided
     if (!needsTransform && this._fallbackCrs) {
-      console.info(`[LAS] No embedded CRS found — applying fallbackCrs: ${this._fallbackCrs}`);
+      console.log('CRS source    : fallbackCrs option →', this._fallbackCrs);
       const resolved = await resolveCrs(this._fallbackCrs);
       if (resolved) {
         transformer = resolved;
         needsTransform = true;
       }
     }
+
+    if (!needsTransform) {
+      console.log('CRS source    : ⚠ NONE — raw coordinates used as-is (assumed WGS84)');
+    }
+    console.groupEnd();
 
     // Create view for reading point data
     const pointFormat = header.pointDataRecordFormat & 0x7F; // Mask off compression bit
