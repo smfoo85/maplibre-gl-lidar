@@ -12,7 +12,7 @@ import type {
   StreamingLoaderEvent,
   StreamingLoaderEventHandler,
 } from './streaming-types';
-import { resolveCrs } from '../utils/crs';
+import { resolveCrs, detectCrsFromBounds } from '../utils/crs';
 import type { PointCloudData, ExtraPointAttributes, AttributeArray } from './types';
 import type { PointCloudBounds } from '../core/types';
 
@@ -369,39 +369,19 @@ export class CopcStreamingLoader {
       }
     }
 
-    // No WKT (or WKT failed) — try fallbackCrs option, then heuristic detection
+    // No WKT (or WKT failed) — try fallbackCrs, then coordinate-range heuristic
     if (!this._needsTransform) {
-      if (this._options.fallbackCrs) {
-        console.info(`[COPC] No embedded CRS found — applying fallbackCrs: ${this._options.fallbackCrs}`);
-        const transformer = await resolveCrs(this._options.fallbackCrs);
+      const crsToTry = this._options.fallbackCrs
+        ?? detectCrsFromBounds(header.min[0], header.min[1], header.max[0], header.max[1]);
+
+      if (crsToTry) {
+        if (this._options.fallbackCrs) {
+          console.info(`[COPC] No embedded CRS — applying fallbackCrs: ${crsToTry}`);
+        }
+        const transformer = await resolveCrs(crsToTry);
         if (transformer) {
           this._transformer = transformer;
           this._needsTransform = true;
-        }
-      } else {
-        // Heuristic detection for known projected coordinate ranges
-        const minX = header.min[0];
-        const minY = header.min[1];
-        const maxX = header.max[0];
-        const maxY = header.max[1];
-
-        let detectedEPSG: string | null = null;
-
-        // Polish coordinate systems (EPSG:2176-2180)
-        // EPSG:2180 (Poland CS92): X: ~170,000-860,000, Y: ~140,000-780,000
-        if (minX >= 100000 && maxX <= 900000 && minY >= 100000 && maxY <= 800000) {
-          detectedEPSG = 'EPSG:2180';
-        }
-
-        if (detectedEPSG) {
-          try {
-            const projConverter = proj4(detectedEPSG, 'EPSG:4326');
-            this._transformer = (coord: [number, number]) =>
-              projConverter.forward(coord) as [number, number];
-            this._needsTransform = true;
-          } catch (e) {
-            console.warn(`Failed to setup coordinate transformation from ${detectedEPSG}:`, e);
-          }
         }
       }
     }

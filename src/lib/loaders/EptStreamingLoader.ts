@@ -9,7 +9,7 @@ import type {
   StreamingLoaderEvent,
   StreamingLoaderEventHandler,
 } from './streaming-types';
-import { resolveCrs } from '../utils/crs';
+import { resolveCrs, detectCrsFromBounds } from '../utils/crs';
 import type {
   EptMetadata,
   EptDimension,
@@ -323,13 +323,20 @@ export class EptStreamingLoader {
       }
     }
 
-    // No WKT (or WKT failed) — apply fallbackCrs when provided
-    if (!this._needsTransform && this._options.fallbackCrs) {
-      console.info(`[EPT] No embedded CRS found — applying fallbackCrs: ${this._options.fallbackCrs}`);
-      const transformer = await resolveCrs(this._options.fallbackCrs);
-      if (transformer) {
-        this._transformer = transformer;
-        this._needsTransform = true;
+    // No WKT (or WKT failed) — try fallbackCrs, then coordinate-range heuristic
+    if (!this._needsTransform) {
+      const [minX, minY, , maxX, maxY] = this._metadata.boundsConforming;
+      const crsToTry = this._options.fallbackCrs ?? detectCrsFromBounds(minX, minY, maxX, maxY);
+
+      if (crsToTry) {
+        if (this._options.fallbackCrs) {
+          console.info(`[EPT] No embedded CRS — applying fallbackCrs: ${crsToTry}`);
+        }
+        const transformer = await resolveCrs(crsToTry);
+        if (transformer) {
+          this._transformer = transformer;
+          this._needsTransform = true;
+        }
       }
     }
 

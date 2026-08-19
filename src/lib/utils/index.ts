@@ -1,4 +1,4 @@
-export { resolveCrs } from './crs';
+export { resolveCrs, detectCrsFromBounds } from './crs';
 
 export {
   clamp,

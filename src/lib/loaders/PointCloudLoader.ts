@@ -4,7 +4,7 @@ import { createLazPerf, type LazPerf } from 'laz-perf';
 import { load } from '@loaders.gl/core';
 import { LASLoader } from '@loaders.gl/las';
 import proj4 from 'proj4';
-import { resolveCrs } from '../utils/crs';
+import { resolveCrs, detectCrsFromBounds } from '../utils/crs';
 import type { PointCloudData, ExtraPointAttributes, AttributeArray } from './types';
 import type { PointCloudBounds } from '../core/types';
 
@@ -416,13 +416,26 @@ export class PointCloudLoader {
       }
     }
 
-    // No embedded CRS — apply fallbackCrs when provided
+    // No embedded CRS — try fallbackCrs option first
     if (!needsTransform && this._fallbackCrs) {
       console.log('CRS source    : fallbackCrs option →', this._fallbackCrs);
       const resolved = await resolveCrs(this._fallbackCrs);
       if (resolved) {
         transformer = resolved;
         needsTransform = true;
+      }
+    }
+
+    // Still no CRS — try coordinate-range heuristic detection
+    if (!needsTransform) {
+      const detected = detectCrsFromBounds(header.min[0], header.min[1], header.max[0], header.max[1]);
+      if (detected) {
+        console.log('CRS source    : auto-detected from bounds →', detected);
+        const resolved = await resolveCrs(detected);
+        if (resolved) {
+          transformer = resolved;
+          needsTransform = true;
+        }
       }
     }
 
@@ -621,13 +634,24 @@ export class PointCloudLoader {
       }
     }
 
-    // No embedded CRS — apply fallbackCrs when provided
+    // No embedded CRS — try fallbackCrs, then bounds heuristic
     if (!needsTransform && this._fallbackCrs) {
-      console.info(`[LAS/loaders.gl] No embedded CRS found — applying fallbackCrs: ${this._fallbackCrs}`);
+      console.info(`[LAS/loaders.gl] No embedded CRS — applying fallbackCrs: ${this._fallbackCrs}`);
       const resolved = await resolveCrs(this._fallbackCrs);
-      if (resolved) {
-        transformer = resolved;
-        needsTransform = true;
+      if (resolved) { transformer = resolved; needsTransform = true; }
+    }
+    if (!needsTransform) {
+      // Derive raw bounds from the position array for heuristic detection
+      let rawMinX = Infinity, rawMinY = Infinity, rawMaxX = -Infinity, rawMaxY = -Infinity;
+      for (let i = 0; i < Math.min(totalPoints, 1000); i++) {
+        const x = sourcePositions[i * 3], y = sourcePositions[i * 3 + 1];
+        if (x < rawMinX) rawMinX = x; if (x > rawMaxX) rawMaxX = x;
+        if (y < rawMinY) rawMinY = y; if (y > rawMaxY) rawMaxY = y;
+      }
+      const detected = detectCrsFromBounds(rawMinX, rawMinY, rawMaxX, rawMaxY);
+      if (detected) {
+        const resolved = await resolveCrs(detected);
+        if (resolved) { transformer = resolved; needsTransform = true; }
       }
     }
 
@@ -861,13 +885,17 @@ export class PointCloudLoader {
       }
     }
 
-    // No embedded CRS — apply fallbackCrs when provided
+    // No embedded CRS — try fallbackCrs, then bounds heuristic
     if (!needsTransform && this._fallbackCrs) {
-      console.info(`[COPC] No embedded CRS found — applying fallbackCrs: ${this._fallbackCrs}`);
+      console.info(`[COPC] No embedded CRS — applying fallbackCrs: ${this._fallbackCrs}`);
       const resolved = await resolveCrs(this._fallbackCrs);
-      if (resolved) {
-        transformer = resolved;
-        needsTransform = true;
+      if (resolved) { transformer = resolved; needsTransform = true; }
+    }
+    if (!needsTransform) {
+      const detected = detectCrsFromBounds(header.min[0], header.min[1], header.max[0], header.max[1]);
+      if (detected) {
+        const resolved = await resolveCrs(detected);
+        if (resolved) { transformer = resolved; needsTransform = true; }
       }
     }
 

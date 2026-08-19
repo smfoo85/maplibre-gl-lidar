@@ -22,6 +22,66 @@ proj4.defs(
   ' +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs',
 );
 
+// ---------------------------------------------------------------------------
+// Coordinate-range heuristics
+// Each entry defines the expected X/Y bounding box for a known projected CRS.
+// A file whose raw header bounds fall inside the box (with some tolerance) is
+// assumed to be in that CRS.  Entries are tested in order; the first match
+// wins.  Keep entries as tight as possible to avoid false positives.
+// ---------------------------------------------------------------------------
+
+interface CrsHint {
+  epsg: string;
+  label: string;
+  minX: number; maxX: number;
+  minY: number; maxY: number;
+}
+
+const CRS_HINTS: CrsHint[] = [
+  {
+    // GDM2000 / East Malaysia BRSO (Borneo RSO)
+    // False origin: E=2,000,000  N=5,000,000
+    // Covers Sabah, Sarawak and Brunei
+    epsg: 'EPSG:29874',
+    label: 'GDM2000 / East Malaysia BRSO',
+    minX: 1_400_000, maxX: 2_700_000,
+    minY: 4_600_000, maxY: 5_600_000,
+  },
+  {
+    // ETRS89 / Poland CS92
+    // False origin: E=500,000  N=−5,300,000
+    epsg: 'EPSG:2180',
+    label: 'ETRS89 / Poland CS92',
+    minX: 170_000,  maxX: 860_000,
+    minY: 140_000,  maxY: 780_000,
+  },
+];
+
+/**
+ * Detects a likely CRS from raw header bounding-box values.
+ *
+ * Returns the EPSG string (e.g. "EPSG:29874") when the bounds fall inside a
+ * known projected coordinate range, or `null` when no match is found.
+ *
+ * This is a last-resort heuristic for files that carry no embedded WKT.
+ * It runs only when `fallbackCrs` is not set.
+ */
+export function detectCrsFromBounds(
+  minX: number, minY: number,
+  maxX: number, maxY: number,
+): string | null {
+  for (const hint of CRS_HINTS) {
+    if (
+      minX >= hint.minX && maxX <= hint.maxX &&
+      minY >= hint.minY && maxY <= hint.maxY
+    ) {
+      console.info(`[CRS] Bounds match ${hint.epsg} (${hint.label}) — applying auto-detection`);
+      return hint.epsg;
+    }
+  }
+  return null;
+}
+
 // Cache for fetched proj4 definitions to avoid duplicate network requests
 const _defCache = new Map<string, string>();
 
