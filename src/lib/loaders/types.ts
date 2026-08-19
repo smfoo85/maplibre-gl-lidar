@@ -76,6 +76,13 @@ export interface PointCloudData {
    * WKT string describing the coordinate reference system
    */
   wkt?: string;
+
+  /**
+   * The CRS identifier (EPSG string or proj4 string) that was actually used
+   * to transform coordinates to WGS84. Undefined when no transform was applied
+   * (file was already in WGS84 / geographic coordinates).
+   */
+  sourceCrs?: string;
 }
 
 /**

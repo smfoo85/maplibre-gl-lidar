@@ -2414,10 +2414,14 @@ export class LidarControl implements IControl {
 
       // Core attributes (always available)
       if (this._shouldShowAttribute('X') || this._shouldShowAttribute('Longitude')) {
-        html += `<div>X: ${info.longitude.toFixed(6)}</div>`;
+        html += `<div>Long: ${info.longitude.toFixed(6)}</div>`;
       }
       if (this._shouldShowAttribute('Y') || this._shouldShowAttribute('Latitude')) {
-        html += `<div>Y: ${info.latitude.toFixed(6)}</div>`;
+        html += `<div>Lat: ${info.latitude.toFixed(6)}</div>`;
+      }
+      if (info.localX !== undefined && info.localY !== undefined) {
+        html += `<div>X: ${info.localX.toFixed(3)}</div>`;
+        html += `<div>Y: ${info.localY.toFixed(3)}</div>`;
       }
       if (this._shouldShowAttribute('Z') || this._shouldShowAttribute('Elevation')) {
         html += `<div>Z: ${info.elevation.toFixed(2)}</div>`;

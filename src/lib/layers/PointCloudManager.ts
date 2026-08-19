@@ -1,6 +1,7 @@
 import { PointCloudLayer } from '@deck.gl/layers';
 import { COORDINATE_SYSTEM } from '@deck.gl/core';
 import type { PickingInfo } from '@deck.gl/core';
+import proj4 from 'proj4';
 import type { DeckOverlay } from '../core/DeckOverlay';
 import type { PointCloudData } from '../loaders/types';
 import type { ColorScheme, PointCloudBounds, ColormapName, ColorRangeConfig } from '../core/types';
@@ -15,6 +16,8 @@ interface ManagedPointCloud {
   data: PointCloudData;
   colors: Uint8Array;
   coordinateOrigin: [number, number, number]; // [lng, lat, 0] center point
+  /** CRS that was used to transform this cloud to WGS84, if any */
+  sourceCrs?: string;
   /** Per-layer visibility (default: true) */
   visible: boolean;
   /** Per-layer opacity override (null means use global) */
@@ -87,6 +90,7 @@ export class PointCloudManager {
       data,
       colors: result.colors,
       coordinateOrigin,
+      sourceCrs: data.sourceCrs,
       visible: true,
       opacityOverride: null,
       chunkCount: 0,
@@ -139,6 +143,7 @@ export class PointCloudManager {
         data,
         colors: result.colors,
         coordinateOrigin: data.coordinateOrigin,
+        sourceCrs: data.sourceCrs ?? existing.sourceCrs,
         visible: existing.visible,
         opacityOverride: existing.opacityOverride,
         chunkCount: existing.chunkCount,
@@ -511,7 +516,7 @@ export class PointCloudManager {
     const pc = this._pointClouds.get(id);
     if (!pc) return;
 
-    const { data, colors, coordinateOrigin, visible, opacityOverride } = pc;
+    const { data, colors, coordinateOrigin, sourceCrs, visible, opacityOverride } = pc;
     const elevationRange = this._options.elevationRange;
     const zOffset = this._options.zOffset ?? 0;
     const layerOpacity = opacityOverride ?? this._options.opacity;
@@ -578,14 +583,27 @@ export class PointCloudManager {
 
         if (info.index >= 0 && info.picked && info.index < originalIndices.length) {
           const originalIndex = originalIndices[info.index];
+          const lng = coordinateOrigin[0] + chunkPositions[info.index * 3];
+          const lat = coordinateOrigin[1] + chunkPositions[info.index * 3 + 1];
           const pointInfo: PickedPointInfo = {
             index: originalIndex,
-            longitude: coordinateOrigin[0] + chunkPositions[info.index * 3],
-            latitude: coordinateOrigin[1] + chunkPositions[info.index * 3 + 1],
+            longitude: lng,
+            latitude: lat,
             elevation: chunkPositions[info.index * 3 + 2],
             x: info.x,
             y: info.y,
           };
+
+          // Compute local projected coordinates via inverse transform
+          if (sourceCrs) {
+            try {
+              const [localX, localY] = proj4('EPSG:4326', sourceCrs).forward([lng, lat]);
+              pointInfo.localX = localX;
+              pointInfo.localY = localY;
+            } catch {
+              // Inverse transform not available — leave localX/Y undefined
+            }
+          }
 
           if (data.intensities) {
             pointInfo.intensity = data.intensities[originalIndex];

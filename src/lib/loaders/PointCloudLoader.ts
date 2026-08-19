@@ -391,6 +391,8 @@ export class PointCloudLoader {
       console.warn('Failed to read VLRs:', e);
     }
 
+    let appliedCrs: string | undefined;
+
     // ── CRS diagnostic ──────────────────────────────────────────────────────
     console.group('[LAS] CRS detection');
     console.log('LAS version   :', `${header.majorVersion}.${header.minorVersion}`);
@@ -409,6 +411,7 @@ export class PointCloudLoader {
         transformer = (coord: [number, number]) => projConverter.forward(coord) as [number, number];
         needsTransform = true;
         verticalUnitFactor = getVerticalUnitConversionFactor(wkt);
+        appliedCrs = wktToUse;
         console.log('CRS source    : embedded WKT');
         console.log('Vertical unit :', verticalUnitFactor === 1.0 ? 'metres' : `feet → metres (×${verticalUnitFactor})`);
       } catch (e) {
@@ -423,6 +426,7 @@ export class PointCloudLoader {
       if (resolved) {
         transformer = resolved;
         needsTransform = true;
+        appliedCrs = this._fallbackCrs;
       }
     }
 
@@ -435,6 +439,7 @@ export class PointCloudLoader {
         if (resolved) {
           transformer = resolved;
           needsTransform = true;
+          appliedCrs = detected;
         }
       }
     }
@@ -563,6 +568,7 @@ export class PointCloudLoader {
       hasClassification: true,
       coordinateOrigin,
       wkt,
+      sourceCrs: appliedCrs,
     };
   }
 
@@ -634,11 +640,14 @@ export class PointCloudLoader {
       }
     }
 
+    let appliedCrs: string | undefined;
+    if (wkt && needsTransform) appliedCrs = wkt;
+
     // No embedded CRS — try fallbackCrs, then bounds heuristic
     if (!needsTransform && this._fallbackCrs) {
       console.info(`[LAS/loaders.gl] No embedded CRS — applying fallbackCrs: ${this._fallbackCrs}`);
       const resolved = await resolveCrs(this._fallbackCrs);
-      if (resolved) { transformer = resolved; needsTransform = true; }
+      if (resolved) { transformer = resolved; needsTransform = true; appliedCrs = this._fallbackCrs; }
     }
     if (!needsTransform) {
       // Derive raw bounds from the position array for heuristic detection
@@ -651,7 +660,7 @@ export class PointCloudLoader {
       const detected = detectCrsFromBounds(rawMinX, rawMinY, rawMaxX, rawMaxY);
       if (detected) {
         const resolved = await resolveCrs(detected);
-        if (resolved) { transformer = resolved; needsTransform = true; }
+        if (resolved) { transformer = resolved; needsTransform = true; appliedCrs = detected; }
       }
     }
 
@@ -798,6 +807,7 @@ export class PointCloudLoader {
       hasClassification,
       coordinateOrigin,
       wkt,
+      sourceCrs: appliedCrs,
     };
   }
 
@@ -885,17 +895,20 @@ export class PointCloudLoader {
       }
     }
 
+    let copcAppliedCrs: string | undefined;
+    if (copc.wkt && needsTransform) copcAppliedCrs = copc.wkt;
+
     // No embedded CRS — try fallbackCrs, then bounds heuristic
     if (!needsTransform && this._fallbackCrs) {
       console.info(`[COPC] No embedded CRS — applying fallbackCrs: ${this._fallbackCrs}`);
       const resolved = await resolveCrs(this._fallbackCrs);
-      if (resolved) { transformer = resolved; needsTransform = true; }
+      if (resolved) { transformer = resolved; needsTransform = true; copcAppliedCrs = this._fallbackCrs; }
     }
     if (!needsTransform) {
       const detected = detectCrsFromBounds(header.min[0], header.min[1], header.max[0], header.max[1]);
       if (detected) {
         const resolved = await resolveCrs(detected);
-        if (resolved) { transformer = resolved; needsTransform = true; }
+        if (resolved) { transformer = resolved; needsTransform = true; copcAppliedCrs = detected; }
       }
     }
 
@@ -1107,6 +1120,7 @@ export class PointCloudLoader {
       hasIntensity: true,
       hasClassification: true,
       wkt: copc.wkt,
+      sourceCrs: copcAppliedCrs,
     };
   }
 }

@@ -6,12 +6,16 @@ import type { ColorScheme, ColormapName, ColorRangeConfig } from '../core/types'
 export interface PickedPointInfo {
   /** Point index within the point cloud */
   index: number;
-  /** Longitude coordinate */
+  /** Longitude coordinate (WGS84) */
   longitude: number;
-  /** Latitude coordinate */
+  /** Latitude coordinate (WGS84) */
   latitude: number;
   /** Elevation in meters */
   elevation: number;
+  /** X coordinate in the source projected CRS (undefined when source was already geographic) */
+  localX?: number;
+  /** Y coordinate in the source projected CRS (undefined when source was already geographic) */
+  localY?: number;
   /** Intensity value (0-1) if available */
   intensity?: number;
   /** Classification code if available */
