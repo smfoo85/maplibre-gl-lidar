@@ -21,7 +21,7 @@ var DeckOverlay = class {
 		this._map = map;
 		this._layers = /* @__PURE__ */ new Map();
 		this._overlay = new MapboxOverlay({
-			interleaved: true,
+			interleaved: false,
 			layers: []
 		});
 		this._map.addControl(this._overlay);
@@ -43339,4 +43339,4 @@ var LidarLayerAdapter = class {
 //#endregion
 export { generateId as A, getColormap as C, formatBytes as D, debounce as E, PointCloudLoader as F, detectCrsFromBounds as I, resolveCrs as L, throttle as M, EptStreamingLoader as N, formatNumber as O, CopcStreamingLoader as P, DeckOverlay as R, COLORMAP_NAMES as S, classNames as T, PointCloudManager as _, createLidarSharePayload as a, COLORMAPS as b, encodeLidarSharePayload as c, CrossSectionTool as d, ElevationProfileExtractor as f, ViewportManager as g, MetadataPanel as h, LIDAR_SHARE_VERSION as i, getFilename as j, formatNumericValue as k, hasLidarShareParams as l, ElevationProfileChart as m, LidarControl as n, createLidarShareUrl as o, CrossSectionPanel as p, LIDAR_SHARE_PARAM as r, decodeLidarSharePayload as s, LidarLayerAdapter as t, parseLidarSharePayloadFromUrl as u, ColorSchemeProcessor as v, clamp as w, COLORMAP_LABELS as x, getClassificationName as y };
 
-//# sourceMappingURL=LidarLayerAdapter-J9Wde6NZ.js.map
+//# sourceMappingURL=LidarLayerAdapter-DBr50vvJ.js.map

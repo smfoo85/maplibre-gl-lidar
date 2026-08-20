@@ -15,7 +15,7 @@ export class DeckOverlay {
     this._map = map;
     this._layers = new Map();
     this._overlay = new MapboxOverlay({
-      interleaved: true,
+      interleaved: false,
       layers: [],
     });
     // Add the overlay as a control (compatible with MapLibre)

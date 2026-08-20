@@ -1,5 +1,5 @@
 Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-const require_LidarLayerAdapter = require("./LidarLayerAdapter-D1jyHIOW.cjs");
+const require_LidarLayerAdapter = require("./LidarLayerAdapter-BgT-4Ef2.cjs");
 let react = require("react");
 //#region src/lib/core/LidarControlReact.tsx
 /**

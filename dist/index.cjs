@@ -1,5 +1,5 @@
 Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-const require_LidarLayerAdapter = require("./LidarLayerAdapter-D1jyHIOW.cjs");
+const require_LidarLayerAdapter = require("./LidarLayerAdapter-BgT-4Ef2.cjs");
 exports.COLORMAPS = require_LidarLayerAdapter.COLORMAPS;
 exports.COLORMAP_LABELS = require_LidarLayerAdapter.COLORMAP_LABELS;
 exports.COLORMAP_NAMES = require_LidarLayerAdapter.COLORMAP_NAMES;

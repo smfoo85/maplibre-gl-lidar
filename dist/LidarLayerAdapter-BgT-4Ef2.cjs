@@ -17,7 +17,7 @@ var DeckOverlay = class {
 		this._map = map;
 		this._layers = /* @__PURE__ */ new Map();
 		this._overlay = new _deck_gl_mapbox.MapboxOverlay({
-			interleaved: true,
+			interleaved: false,
 			layers: []
 		});
 		this._map.addControl(this._overlay);
@@ -43562,4 +43562,4 @@ Object.defineProperty(exports, "throttle", {
 	}
 });
 
-//# sourceMappingURL=LidarLayerAdapter-D1jyHIOW.cjs.map
+//# sourceMappingURL=LidarLayerAdapter-BgT-4Ef2.cjs.map
