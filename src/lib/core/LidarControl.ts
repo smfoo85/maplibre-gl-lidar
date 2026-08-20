@@ -935,6 +935,7 @@ export class LidarControl implements IControl {
           {
             padding: 50,
             duration: 1000,
+            pitch: this._map?.getPitch() ?? 0,
           }
         );
 
@@ -1174,6 +1175,7 @@ export class LidarControl implements IControl {
           {
             padding: 50,
             duration: 1000,
+            pitch: this._map?.getPitch() ?? 0,
           }
         );
 
@@ -1964,6 +1966,11 @@ export class LidarControl implements IControl {
         source: 'terrain-dem',
         exaggeration: this._options.terrainExaggeration ?? 1.0,
       });
+
+      // Tilt camera so terrain is visible — a flat (pitch=0) view looks identical with or without terrain
+      if (this._map.getPitch() < 10) {
+        this._map.easeTo({ pitch: 45, duration: 500 });
+      }
     } else {
       // Disable terrain
       this._map.setTerrain(null);
@@ -2071,6 +2078,7 @@ export class LidarControl implements IControl {
       {
         padding: 50,
         duration: 1000,
+        pitch: this._map.getPitch(),
       }
     );
   }
